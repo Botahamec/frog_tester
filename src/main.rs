@@ -70,7 +70,7 @@ fn draw_card(deck: &mut Vec<Frog>, hand: &mut Vec<Frog>, discard: &mut Vec<Frog>
 		hand.clear();
 	}
 	hand.push(frog.clone());
-	frog
+	Ok(frog)
 }
 
 fn min_frog(frogs: Vec<Frog>) -> usize {
@@ -280,7 +280,7 @@ fn start_game(frog_list: Vec<Frog>) {
 	for i in 0..players.len() {for _j in 0..3 {players[i].push(deck.pop().unwrap());}}
 	while deck.len() > 0 {
 		for i in 0..3 {
-			draw_card(&mut deck, &mut players[i], &mut discard);
+			if deck.len() >= 1 {draw_card(&mut deck, &mut players[i], &mut discard);}
 			play_card(&mut deck, &mut discard, i, &mut players);
 		}
 	}
