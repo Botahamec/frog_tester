@@ -1,34 +1,232 @@
+extern crate rand;
+use std::convert::TryInto;
+use rand::Rng;
+
+#[derive(Clone)]
 struct Frog {
 	id: u32,
 	points: i8,
 	name: String,
 	ability: String
 }
+impl PartialEq for Frog {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
 
 struct FrogBuilder {frogs: u32}
 impl FrogBuilder {
-	fn new(&self, points: i8, name: &str, ability: &str) -> Frog {
+	fn new(&mut self, points: i8, name: &str, ability: &str) -> Frog {
 		self.frogs += 1;
 		Frog{id: self.frogs, points: points, name: String::from(name), ability: String::from(ability)}
 	}
 }
 
+/* Missing Frogs:
+ * Kermit
+ * Frog Phone
+ * Loner
+ * Peeper
+ * Captain Frog
+ * Nurse Frog         */
 fn initialize_frogs() -> Vec<Frog> {
-	let fb = FrogBuilder{frogs: 0};
+	let mut fb = FrogBuilder{frogs: 0};
 	vec![
-		fb.new(1, "Trash", "Discard this card. Nothing else happens."),
-		fb.new(-3, "Loner", "This card subtracts three points frim your hand as long as you have it."),
-		fb.new(2, "Tad", "Draw two cards"),
-		fb.new(2, "Dat Boi", "Draw one card."),
-		fb.new(2, "Pepper", "Choose a frog. Its owner may not use that frog until their next turn."),
-		fb.new(3, "Definitely a Frog", "Destroy one frog from each opponent."),
-		fb.new(3, "Kermit", "Shuffle the discard pile into the deck."),
-		fb.new(3, "Nurse Frog", "You may take any frog of four points or less."),
-		fb.new(3, "Sir Froggo", "Discard this card and one of your opponent's cards."),
-		fb.new(3, "Meme Tad", "Discard another frog you control, return a frog from the discard pile to your hand.")
+		fb.new(5, "Trash", "Discard this card. Nothing else happens."),
+		fb.new(5, "Tad", "Draw two cards"),
+		fb.new(5, "Dat Boi", "Draw one card."),
+		fb.new(5, "Meme Tad", "Discard another frog you control, then pull a card from the discard pile into your hand"),
+		fb.new(5, "Definitely a Frog", "Destroy one frog from each opponent."),
+		fb.new(5, "Sir Froggo", "Discard this card and one of your opponent's cards."),
+		fb.new(5, "Booming Toad", "Draw frogs equal to the number of players, then give them to each player as you see fit."),
+		fb.new(5, "Devil Frog", "Destroy another player's frog, or play at any time to destory a frog as it's drawn."),
+		fb.new(5, "Great Hopper", "Flip this card. If it lands on the front, destroy another player's frog. Else, draw a card."),
+		fb.new(5, "Green Googly Goblin", "Force an opponent to discard their entire hand."),
+		fb.new(5, "Hypnotoad", "Flip this card. If it lands on the front, take an opposing frog, otherwise, give that player Hypnotoad."),
+		fb.new(5, "Time Frog", "Take another turn."),
+		fb.new(5, "Frolord", "Draw cards until you either gain a total of 20 points, reach the maximum number of cards, or empty the deck"),
+		fb.new(5, "Pepe", "If you draw this card, discard your entire hand.")
 	]
 }
 
+fn shuffle(frog_list: Vec<Frog>) -> Vec<Frog> {
+	let mut deck : Vec<Frog> = vec![];
+	let mut frog_num : u32 = 1;
+	while frog_num < frog_list.len().try_into().unwrap() {
+		let rn = rand::thread_rng().gen_range(0, frog_num);
+		if !deck.contains(&frog_list.clone()[rn as usize]) {
+			deck.push(frog_list[rn as usize].clone());
+			frog_num += 1;
+		}
+	}
+	deck
+}
+
+fn draw_card(deck: &mut Vec<Frog>, hand: &mut Vec<Frog>, discard: &mut Vec<Frog>) -> Frog {
+	let frog = deck.pop().unwrap();
+	if frog.id == 15 {
+		discard.append(hand);
+		hand.clear();
+	}
+	hand.push(frog.clone());
+	frog
+}
+
+fn min_frog(frogs: Vec<Frog>) -> usize {
+	let mut i = 0;
+    for j in 0..frogs.len() {
+        if frogs[j].id < frogs[i].id {
+            i = j;
+        }
+    }
+    i
+}
+
+fn max_frog(frogs: Vec<Frog>) -> usize {
+	let mut i = 0;
+    for j in 0..frogs.len() {
+        if frogs[j].id > frogs[i].id {
+            i = j;
+        }
+    }
+    i
+}
+
+fn max_all_frogs(players: Vec<Vec<Frog>>) -> (usize, usize) {
+	let mut i = 0;
+	let mut max_i = 0;
+	for j in 0..players.len() {
+		let max_j = max_frog(players[j].clone());
+		if players[j][max_j].id > players[i][max_i].id {
+			i = j;
+			max_i = max_j;
+		}
+	}
+	(i, max_i)
+}
+
+fn player_points(player: Vec<Frog>) -> i8 {
+	let mut points = 0;
+	for frog in player {
+		points += frog.points;
+	}
+	points
+}
+
+fn max_player(players: Vec<Vec<Frog>>) -> usize {
+	let mut i = 0;
+	let mut p = 0;
+	for j in 0..players.len() {
+		let points = player_points(players[j].clone());
+		if points > p {
+			i = j;
+			p = points;
+		}
+	}
+	i
+}
+
+fn min_player(players: Vec<Vec<Frog>>) -> usize {
+	let mut i = 0;
+	let mut p = 0;
+	for j in 0..players.len() {
+		let points = player_points(players[j].clone());
+		if points < p {
+			i = j;
+			p = points;
+		}
+	}
+	i
+}
+
+fn play_card(mut deck: &mut Vec<Frog>, mut discard: &mut Vec<Frog>, player_num: usize, mut players: &mut Vec<Vec<Frog>>) {
+	let card_num = rand::thread_rng().gen_range(0, players[player_num].len());
+	let frog = players[player_num].remove(card_num);
+	discard.push(frog.clone());
+	match frog.id as usize {
+		02 => {
+			draw_card(&mut deck, &mut players[player_num], &mut discard);
+			draw_card(&mut deck, &mut players[player_num], &mut discard);
+		},
+		03 => {draw_card(&mut deck, &mut players[player_num], &mut discard);},
+		04 => {
+			let hand = &players.clone()[player_num];
+			discard.push(players[player_num].remove(min_frog(hand.to_vec())));
+			players[player_num].push(discard.remove(max_frog(discard.to_vec())));
+		},
+		05 => {
+			for i in 0..players.len() {
+				let hand = players[i].clone();
+				discard.push(players[i].remove(max_frog(hand)));
+			}
+		},
+		06 => {
+			let tuple = max_all_frogs(players.clone());
+			discard.push(players[tuple.0].remove(tuple.1));
+		},
+		07 => {
+			let mut drawn_cards : Vec<Frog> = Vec::new();
+			for _i in 0..players.len() {drawn_cards.push(deck.pop().unwrap());}
+			for i in 0..players.len() {
+				if i == player_num {players[i].push(drawn_cards.remove(max_frog(drawn_cards.clone())));}
+				else {players[i].push(drawn_cards.remove(min_frog(drawn_cards.clone())));}
+			}
+		},
+		08 => {
+			let tuple = max_all_frogs(players.clone());
+			discard.push(players[tuple.0].remove(tuple.1));
+		},
+		09 => {
+			let coin = rand::thread_rng().gen_range(0, 2);
+			if coin == 0 {draw_card(deck, &mut players[player_num], discard);}
+			else {
+				let tuple = max_all_frogs(players.clone());
+				discard.push(players[tuple.0].remove(tuple.1));
+			}
+		},
+		10 => {
+			let player = max_player(players.to_vec());
+			discard.append(&mut players[player]);
+			players[player].clear();
+		},
+		11 => {
+			let coin = rand::thread_rng().gen_range(0, 2);
+			if coin == 0 {draw_card(deck, &mut players[player_num], discard);}
+			else {
+				let player = min_player(players.to_vec());
+				players[player].push(frog);
+			}
+		},
+		12 => {
+			draw_card(&mut deck, &mut players[player_num], &mut discard);
+			play_card(&mut deck, &mut discard, player_num, &mut players);
+		},
+		13 => {
+			let mut points_gained: i8 = 0;
+			while points_gained < 20 && deck.len() > 0 {
+				let drawn_frog = draw_card(deck, &mut players[player_num], &mut discard);
+				points_gained += drawn_frog.points;
+			}
+		}
+		_ => (), // The default is to do nothing
+	}
+}
+
+fn start_game(frog_list: Vec<Frog>) {
+	let mut deck = shuffle(frog_list);
+	let mut discard: Vec<Frog> = Vec::new();
+	let mut players : Vec<Vec<Frog>> = vec![vec![], vec![], vec![]];
+	for i in 0..players.len() {for _j in 0..3 {players[i].push(deck.pop().unwrap());}}
+	while deck.len() > 0 {
+		for i in 0..3 {
+			draw_card(&mut deck, &mut players[i], &mut discard);
+			play_card(&mut deck, &mut discard, i, &mut players);
+		}
+	}
+}
+
 fn main() {
-	let frogs = initialize_frogs();
+	let frog_list = initialize_frogs();
+	start_game(frog_list);
 }
