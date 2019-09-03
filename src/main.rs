@@ -140,8 +140,68 @@ fn min_player(players: Vec<Vec<Frog>>) -> usize {
 	i
 }
 
+fn playable(frog: Frog, deck: Vec<Frog>, discard: Vec<Frog>, player_num: usize, players: Vec<Vec<Frog>>) -> bool {
+	match frog.id {
+		01 => true,
+		02 => deck.len() >= 2,
+		03 => deck.len() >= 1,
+		04 => players[player_num].len() >= 1 && discard.len() >= 1,
+		05 => {
+			for i in 0..players.len() {
+				if players[i].len() < 1 && i != player_num {return false;}
+			}
+			true
+		},
+		06 => {
+			for i in 0..players.len() {
+				if players[i].len() < 1 && i != player_num {return true;}
+			}
+			false
+		},
+		07 => deck.len() >= players.len(),
+		08 => {
+			for i in 0..players.len() {
+				if players[i].len() < 1 && i != player_num {return true;}
+			}
+			false
+		},
+		09 => {
+			let mut enough_cards = false;
+			for i in 0..players.len() {
+				if players[i].len() >= 1 && i != player_num {
+					enough_cards = true;
+					break;
+				}
+			}
+			if deck.len() >= 1 && enough_cards {true}
+			else {false}
+		},
+		10 => {
+			for i in 0..players.len() {
+				if players[i].len() < 1 && i != player_num {return true;}
+			}
+			false
+		},
+		11 => true,
+		12 => true,
+		13 => true,
+		14 => true,
+		_ => false
+	}
+}
+
 fn play_card(mut deck: &mut Vec<Frog>, mut discard: &mut Vec<Frog>, player_num: usize, mut players: &mut Vec<Vec<Frog>>) {
-	let card_num = rand::thread_rng().gen_range(0, players[player_num].len());
+
+	// filter out unplayable cards
+	let mut playable_cards : Vec<usize> = Vec::new();
+	for i in 0..players[player_num].len() {
+		if playable(players[player_num][i].clone(), deck.to_vec(), discard.to_vec(), player_num, players.to_vec()) {
+			playable_cards.push(i);
+		}
+	}
+	if playable_cards.len() == 0 {return;}
+
+	let card_num = playable_cards[rand::thread_rng().gen_range(0, playable_cards.len())];
 	let frog = players[player_num].remove(card_num);
 	discard.push(frog.clone());
 	match frog.id as usize {
