@@ -70,7 +70,7 @@ fn draw_card(deck: &mut Vec<Frog>, hand: &mut Vec<Frog>, discard: &mut Vec<Frog>
 		hand.clear();
 	}
 	hand.push(frog.clone());
-	Ok(frog)
+	frog
 }
 
 fn min_frog(frogs: Vec<Frog>) -> usize {
@@ -182,7 +182,17 @@ fn playable(frog: Frog, deck: Vec<Frog>, discard: Vec<Frog>, player_num: usize, 
 			}
 			false
 		},
-		11 => true,
+		11 => {
+			let mut enough_cards = false;
+			for i in 0..players.len() {
+				if players[i].len() >= 1 && i != player_num {
+					enough_cards = true;
+					break;
+				}
+			}
+			if deck.len() >= 1 && enough_cards {true}
+			else {false}
+		},
 		12 => true,
 		13 => true,
 		14 => true,
@@ -190,7 +200,7 @@ fn playable(frog: Frog, deck: Vec<Frog>, discard: Vec<Frog>, player_num: usize, 
 	}
 }
 
-fn play_card(mut deck: &mut Vec<Frog>, mut discard: &mut Vec<Frog>, player_num: usize, mut players: &mut Vec<Vec<Frog>>) {
+fn play_card(mut deck: &mut Vec<Frog>, mut discard: &mut Vec<Frog>, player_num: usize, mut players: &mut Vec<Vec<Frog>>) -> Option<Frog> {
 
 	// filter out unplayable cards
 	let mut playable_cards : Vec<usize> = Vec::new();
@@ -199,7 +209,7 @@ fn play_card(mut deck: &mut Vec<Frog>, mut discard: &mut Vec<Frog>, player_num: 
 			playable_cards.push(i);
 		}
 	}
-	if playable_cards.len() == 0 {return;}
+	if playable_cards.len() == 0 {return None;}
 
 	let card_num = playable_cards[rand::thread_rng().gen_range(0, playable_cards.len())];
 	let frog = players[player_num].remove(card_num);
@@ -255,11 +265,11 @@ fn play_card(mut deck: &mut Vec<Frog>, mut discard: &mut Vec<Frog>, player_num: 
 			if coin == 0 {draw_card(deck, &mut players[player_num], discard);}
 			else {
 				let player = min_player(players.to_vec());
-				players[player].push(frog);
+				players[player].push(frog.clone());
 			}
 		},
 		12 => {
-			draw_card(&mut deck, &mut players[player_num], &mut discard);
+			if deck.len() >= 1 {draw_card(&mut deck, &mut players[player_num], &mut discard);}
 			play_card(&mut deck, &mut discard, player_num, &mut players);
 		},
 		13 => {
@@ -271,22 +281,42 @@ fn play_card(mut deck: &mut Vec<Frog>, mut discard: &mut Vec<Frog>, player_num: 
 		}
 		_ => (), // The default is to do nothing
 	}
+	return Some(frog.clone())
 }
 
-fn start_game(frog_list: Vec<Frog>) {
+fn start_game(frog_list: Vec<Frog>) -> Vec<Frog> {
 	let mut deck = shuffle(frog_list);
 	let mut discard: Vec<Frog> = Vec::new();
 	let mut players : Vec<Vec<Frog>> = vec![vec![], vec![], vec![]];
-	for i in 0..players.len() {for _j in 0..3 {players[i].push(deck.pop().unwrap());}}
+	let mut cards_played : Vec<Vec<Frog>> = vec![vec![], vec![], vec![]];
+	for i in 0..players.len() {for _j in 0..2 {players[i].push(deck.pop().unwrap());}}
 	while deck.len() > 0 {
 		for i in 0..3 {
 			if deck.len() >= 1 {draw_card(&mut deck, &mut players[i], &mut discard);}
-			play_card(&mut deck, &mut discard, i, &mut players);
+			match play_card(&mut deck, &mut discard, i, &mut players) {
+				Some(id) => cards_played[i].push(id),
+				None => ()
+			};
 		}
 	}
+	let mut max_points = 0;
+	let mut max_play = 0;
+	for i in 0..cards_played.len() {
+		let points = player_points(cards_played[i].clone());
+		if points > max_points {
+			max_play = i;
+			max_points = points;
+		}
+	}
+	return cards_played[max_play].clone();
 }
 
 fn main() {
 	let frog_list = initialize_frogs();
-	start_game(frog_list);
+	let mut tier_nums : [u64; 14] = [0; 14];
+	for _i in 0..20000 {
+		let winning_frogs = start_game(frog_list.clone());
+		for frog in winning_frogs {tier_nums[frog.id as usize] += 1;}
+	}
+	for i in 0..tier_nums.len() {println!("frog {}: {} games", i, tier_nums[i]);}
 }
